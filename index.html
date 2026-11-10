@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ortak Kadro</title>
+<meta name="description" content="İki takım seç, ikisinde de forma giymiş futbolcuları gör.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Düzen: üstte iki kulüp karşı karşıya (skor tabelası gibi), altında her oyuncu için ortak yıl ekseninde iki şerit */
+:root {
+  --bg: #eef2ee;
+  --surface: #ffffff;
+  --fg: #142019;
+  --muted: #5a6a60;
+  --line: #d3dcd5;
+  --a: #1d4ed8;
+  --b: #c2410c;
+  --a-soft: #dbe5ff;
+  --b-soft: #fde3d6;
+  --chip: #e3e9e4;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1411; --surface: #161e1a; --fg: #e6ece8; --muted: #92a299; --line: #26312b;
+    --a: #7b9cff; --b: #ff8a5c; --a-soft: #1c2747; --b-soft: #3d2116; --chip: #212b26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1411; --surface: #161e1a; --fg: #e6ece8; --muted: #92a299; --line: #26312b;
+  --a: #7b9cff; --b: #ff8a5c; --a-soft: #1c2747; --b-soft: #3d2116; --chip: #212b26;
+  color-scheme: dark;
+}
+:root { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+[hidden] { display: none !important; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 24px 48px; display: grid; gap: 20px; }
+
+header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font: 700 28px/1 var(--font-display); letter-spacing: .02em; text-transform: uppercase; margin: 0; }
+.brand span { color: var(--muted); font-weight: 600; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+
+/* Karşılaşma tabelası */
+.match {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center;
+}
+.side { position: relative; min-width: 0; display: grid; gap: 6px; }
+.side label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.side.a label::before, .side.b label::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.side.a label::before { background: var(--a); }
+.side.b label::before { background: var(--b); }
+.side input {
+  width: 100%; font: 700 clamp(24px, 4.5vw, 36px)/1.1 var(--font-display); text-transform: uppercase;
+  color: var(--fg); background: transparent; border: 0; border-bottom: 2px solid var(--line);
+  padding: 4px 0 6px; outline: none; border-radius: 0;
+}
+.side.a input:focus { border-color: var(--a); }
+.side.b input:focus { border-color: var(--b); }
+.vs { display: grid; justify-items: center; gap: 6px; }
+.vs b { font: 700 30px/1 var(--font-display); color: var(--muted); }
+.swap {
+  font: 500 12px var(--font-body); color: var(--muted); background: var(--chip); border: 0;
+  border-radius: 999px; padding: 4px 10px; cursor: pointer;
+}
+.swap:hover { color: var(--fg); }
+button:focus-visible, input:focus-visible, select:focus-visible, li[role="option"]:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+
+.list-box {
+  position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px;
+  list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18); max-height: 320px; overflow-y: auto;
+}
+.list-box li { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+.list-box li small { color: var(--muted); font-family: var(--font-data); font-size: 11px; white-space: nowrap; }
+.list-box li[aria-selected="true"], .list-box li:hover { background: var(--chip); }
+
+/* Sonuç çubuğu */
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.count { font: 700 22px/1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.count em { font-style: normal; color: var(--muted); font-weight: 600; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.busy::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--a); margin-right: 6px; animation: blink 1s infinite; }
+.pill.warn { background: var(--b-soft); color: var(--fg); }
+@keyframes blink { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .pill.busy::before { animation: none; } }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.tools input, .tools select {
+  font: 14px var(--font-body); color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+}
+.tools input { width: 180px; max-width: 100%; }
+
+/* Oyuncu satırları */
+.rows { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.row, .axis { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; padding: 12px 16px; align-items: center; }
+.row + .row { border-top: 1px solid var(--line); }
+.axis { padding-block: 10px; border-bottom: 1px solid var(--line); color: var(--muted); font: 500 11px var(--font-data); }
+.ticks { position: relative; height: 14px; }
+.ticks span { position: absolute; transform: translateX(-50%); }
+.who { min-width: 0; display: grid; gap: 2px; }
+.who strong { font-weight: 600; overflow-wrap: anywhere; }
+.who .meta { color: var(--muted); font-size: 12.5px; }
+.years { font: 500 12px var(--font-data); display: flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.years .ya { color: var(--a); }
+.years .yb { color: var(--b); }
+.src { font: 500 10px var(--font-data); letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; background: var(--chip); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+.lanes { position: relative; height: 26px; background:
+  repeating-linear-gradient(90deg, transparent 0 calc(var(--dec) - 1px), var(--line) calc(var(--dec) - 1px) var(--dec));
+  background-position: var(--off) 0; border-radius: 4px; }
+.seg { position: absolute; height: 9px; border-radius: 3px; min-width: 4px; }
+.seg.a { top: 3px; background: var(--a); }
+.seg.b { top: 14px; background: var(--b); }
+.seg.open { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.seg.guess { opacity: .45; }
+.empty { padding: 32px 16px; text-align: center; color: var(--muted); }
+.foot { color: var(--muted); font-size: 12.5px; display: grid; gap: 4px; }
+.foot a { color: inherit; }
+
+@media (max-width: 640px) {
+  .match { grid-template-columns: 1fr; }
+  .vs { grid-auto-flow: column; justify-content: start; align-items: center; gap: 12px; }
+  .vs b { font-size: 22px; }
+  .row, .axis { grid-template-columns: 1fr; gap: 8px; }
+  .axis .lbl { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Ortak Kadro <span>· iki takım, aynı oyuncular</span></h1>
+    <p class="note" id="dataNote">Veri yükleniyor…</p>
+  </header>
+
+  <section class="match" aria-label="Takım seçimi">
+    <div class="side a">
+      <label for="clubA">Takım A</label>
+      <input id="clubA" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="listA" placeholder="Takım yaz">
+      <ul class="list-box" id="listA" role="listbox" hidden></ul>
+    </div>
+    <div class="vs"><b>×</b><button class="swap" id="swap" type="button">Yer değiştir</button></div>
+    <div class="side b">
+      <label for="clubB">Takım B</label>
+      <input id="clubB" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="listB" placeholder="Takım yaz">
+      <ul class="list-box" id="listB" role="listbox" hidden></ul>
+    </div>
+  </section>
+
+  <div class="bar">
+    <div class="count" id="count">—</div>
+    <div class="pills" id="pills"></div>
+    <div class="tools">
+      <input id="filter" type="search" placeholder="Oyuncu ara">
+      <select id="sort" aria-label="Sıralama">
+        <option value="year">Yıla göre</option>
+        <option value="name">Ada göre</option>
+        <option value="recent">En yeni önce</option>
+      </select>
+    </div>
+  </div>
+
+  <section class="rows" id="rows" aria-live="polite"></section>
+
+  <footer class="foot">
+    <span><b style="color:var(--a)">▬</b> Takım A dönemi &nbsp; <b style="color:var(--b)">▬</b> Takım B dönemi. Soluk çubuk: yıl bilgisi eksik, tahmini.</span>
+    <span>Kaynaklar: <a href="https://github.com/dcaribou/transfermarkt-datasets" target="_blank" rel="noopener">transfermarkt-datasets</a> (2005 sonrası, veri tarihi 6 Temmuz 2026) ve <a href="https://www.wikidata.org" target="_blank" rel="noopener">Wikidata</a> (eski yıllar, her sorguda canlı).</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const NOW = new Date().getFullYear();
+const WD_TTL = 30 * 24 * 3600 * 1000;
+let D = null;          // data.json
+let clubs = [];        // [{id, name, key, n}]
+let clubById = new Map();
+let state = { a: null, b: null, tm: [], wd: null, wdStatus: "idle", wdError: "" };
+let reqId = 0;
+
+const $ = (id) => document.getElementById(id);
+const norm = (s) => (s || "").toLocaleLowerCase("tr")
+  .replace(/[çc]/g, "c").replace(/[ğg]/g, "g").replace(/[ıi̇i]/g, "i").replace(/[öo]/g, "o")
+  .replace(/[şs]/g, "s").replace(/[üu]/g, "u").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+/* ---------- Veri ---------- */
+async function load() {
+  const res = await fetch("data.json");
+  D = await res.json();
+  clubs = D.clubs.map(([id, name]) => ({ id: String(id), name, key: norm(name), n: (D.stints[id] || []).length }));
+  clubById = new Map(clubs.map(c => [c.id, c]));
+  $("dataNote").textContent = `${clubs.length.toLocaleString("tr")} kulüp, ${D.players.length.toLocaleString("tr")} oyuncu`;
+  const [a, b] = parseHash();
+  setClub("a", a || "141", false);
+  setClub("b", b || "36", false);
+  run();
+}
+
+function parseHash() {
+  const m = location.hash.match(/^#(\d+)-(\d+)$/);
+  return m ? [m[1], m[2]] : [null, null];
+}
+
+function tmIntersect(a, b) {
+  const A = new Map((D.stints[a] || []).map(s => [s[0], s]));
+  const out = [];
+  for (const s of D.stints[b] || []) {
+    const sa = A.get(s[0]);
+    if (!sa) continue;
+    const [pid, name, born, pos, nat] = D.players[s[0]];
+    out.push({ tm: String(pid), name, born, pos, nat,
+      a: { from: sa[1], to: sa[2], open: sa[2] === null },
+      b: { from: s[1], to: s[2], open: s[2] === null }, src: new Set(["TM"]) });
+  }
+  return out;
+}
+
+/* ---------- Wikidata ---------- */
+function wdQuery(a, b) {
+  return `SELECT ?p ?pLabel ?tm ?clubTm ?start ?end ?dob WHERE {
+  ?ca wdt:P7223 "${a}" . ?cb wdt:P7223 "${b}" .
+  ?p wdt:P54 ?ca . ?p wdt:P54 ?cb .
+  ?p p:P54 ?st . ?st ps:P54 ?club . FILTER(?club = ?ca || ?club = ?cb)
+  ?club wdt:P7223 ?clubTm .
+  OPTIONAL { ?st pq:P580 ?start } OPTIONAL { ?st pq:P582 ?end }
+  OPTIONAL { ?p wdt:P2446 ?tm } OPTIONAL { ?p wdt:P569 ?dob }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "tr,en". }
+}`;
+}
+
+async function fetchWikidata(a, b) {
+  const key = "wd:" + [a, b].sort().join("-");
+  const cached = store.get(key);
+  if (cached && Date.now() - cached.t < WD_TTL) return cached.rows;
+  const url = "https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(wdQuery(a, b));
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45000);
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/sparql-results+json" }, signal: ctrl.signal });
+    if (res.status === 429) throw new Error("Wikidata çok sık sorgulandı, biraz sonra tekrar dene.");
+    if (!res.ok) throw new Error("Wikidata yanıt vermedi (" + res.status + ").");
+    const json = await res.json();
+    const rows = json.results.bindings.map(r => ({
+      q: r.p.value.split("/").pop(), name: r.pLabel?.value, tm: r.tm?.value || null,
+      club: r.clubTm.value, start: yr(r.start), end: yr(r.end), born: yr(r.dob)
+    }));
+    store.set(key, { t: Date.now(), rows });
+    return rows;
+  } finally { clearTimeout(timer); }
+}
+const yr = (b) => b && /^-?\d{4}/.test(b.value) ? parseInt(b.value.slice(0, 4), 10) : null;
+
+function wdGroup(rows, a, b) {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.q)) m.set(r.q, { q: r.q, name: r.name, tm: r.tm, born: r.born, a: null, b: null });
+    const p = m.get(r.q);
+    const side = r.club === a ? "a" : r.club === b ? "b" : null;
+    if (!side) continue;
+    p[side] = mergeSpan(p[side], { from: r.start, to: r.end, open: false, unknownEnd: r.end === null });
+  }
+  return [...m.values()].filter(p => p.a && p.b);
+}
+
+function mergeSpan(x, y) {
+  if (!x) return y;
+  if (!y) return x;
+  const min = (u, v) => u == null ? v : v == null ? u : Math.min(u, v);
+  const max = (u, v) => u == null ? v : v == null ? u : Math.max(u, v);
+  return { from: min(x.from, y.from), to: max(x.to, y.to), open: !!(x.open || y.open),
+           unknownEnd: !!(x.unknownEnd && y.unknownEnd) };
+}
+
+function combine(tmList, wdList) {
+  const byTm = new Map(tmList.map(p => [p.tm, p]));
+  const byName = new Map(tmList.map(p => [norm(p.name), p]));
+  const out = [...tmList];
+  for (const w of wdList || []) {
+    const hit = (w.tm && byTm.get(w.tm)) || byName.get(norm(w.name));
+    if (hit) {
+      hit.a = mergeSpan(hit.a, w.a); hit.b = mergeSpan(hit.b, w.b);
+      hit.src.add("WD"); hit.born = hit.born || w.born;
+    } else if (!/^Q\d+$/.test(w.name || "")) {
+      out.push({ tm: w.tm, name: w.name, born: w.born, pos: null, nat: null, a: w.a, b: w.b, src: new Set(["WD"]) });
+    }
+  }
+  return out;
+}
+
+/* ---------- Akış ---------- */
+async function run() {
+  const { a, b } = state;
+  if (!a || !b) { render(); return; }
+  history.replaceState(null, "", `#${a}-${b}`);
+  document.title = `${clubById.get(a)?.name} × ${clubById.get(b)?.name} · Ortak Kadro`;
+  const my = ++reqId;
+  state.tm = a === b ? [] : tmIntersect(a, b);
+  state.wd = null; state.wdStatus = a === b ? "idle" : "busy"; state.wdError = "";
+  render();
+  if (a === b) return;
+  try {
+    const rows = await fetchWikidata(a, b);
+    if (my !== reqId) return;
+    state.wd = wdGroup(rows, a, b); state.wdStatus = "done";
+  } catch (e) {
+    if (my !== reqId) return;
+    state.wdStatus = "error";
+    state.wdError = e.name === "AbortError" ? "Wikidata zaman aşımına uğradı." : (e.message || "Wikidata'ya ulaşılamadı.");
+  }
+  render();
+}
+
+/* ---------- Görünüm ---------- */
+function spanText(s) {
+  if (!s || (s.from == null && s.to == null)) return "yıl yok";
+  const f = s.from ?? "?";
+  const t = s.open ? "…" : (s.to ?? (s.unknownEnd ? "?" : f));
+  return f === t ? String(f) : `${f}–${t}`;
+}
+function firstYear(p) { return Math.min(p.a?.from ?? p.a?.to ?? 9999, p.b?.from ?? p.b?.to ?? 9999); }
+function lastYear(p) {
+  const e = (s) => s ? (s.open ? NOW : (s.to ?? s.from ?? 0)) : 0;
+  return Math.max(e(p.a), e(p.b));
+}
+
+function render() {
+  const { a, b } = state;
+  const box = $("rows");
+  const pills = [];
+  if (!a || !b) { $("count").textContent = "—"; $("pills").innerHTML = ""; box.innerHTML = `<div class="empty">İki takım seç.</div>`; return; }
+  if (a === b) { $("count").textContent = "—"; $("pills").innerHTML = ""; box.innerHTML = `<div class="empty">Aynı takımı iki kez seçtin.</div>`; return; }
+
+  const tmCopy = state.tm.map(p => ({ ...p, a: { ...p.a }, b: { ...p.b }, src: new Set(p.src) }));
+  let list = combine(tmCopy, state.wd);
+  const tmN = list.filter(p => p.src.has("TM")).length;
+  const wdOnly = list.filter(p => !p.src.has("TM")).length;
+  pills.push(`<span class="pill">Transfermarkt ${tmN}</span>`);
+  if (state.wdStatus === "busy") pills.push(`<span class="pill busy">Eski yıllar Wikidata'da aranıyor</span>`);
+  if (state.wdStatus === "done") pills.push(`<span class="pill">Wikidata'dan +${wdOnly}</span>`);
+  if (state.wdStatus === "error") pills.push(`<span class="pill warn" title="${esc(state.wdError)}">Wikidata alınamadı</span>`);
+  $("pills").innerHTML = pills.join("");
+  $("count").innerHTML = `${list.length} <em>ortak oyuncu</em>`;
+
+  const q = norm($("filter").value);
+  if (q) list = list.filter(p => norm(p.name).includes(q));
+  const sort = $("sort").value;
+  list.sort(sort === "name" ? (x, y) => x.name.localeCompare(y.name, "tr")
+          : sort === "recent" ? (x, y) => lastYear(y) - lastYear(x) || x.name.localeCompare(y.name, "tr")
+          : (x, y) => firstYear(x) - firstYear(y) || x.name.localeCompare(y.name, "tr"));
+
+  if (!list.length) {
+    box.innerHTML = `<div class="empty">${q ? "Aramaya uyan oyuncu yok." : state.wdStatus === "busy" ? "Henüz bulunan yok, Wikidata bekleniyor…" : "Bu iki takımda birlikte forma giymiş oyuncu bulunamadı."}</div>`;
+    return;
+  }
+
+  // Ortak yıl ekseni: on yıllara yuvarlanır
+  let lo = Math.min(...list.map(firstYear).filter(y => y < 9999));
+  if (!isFinite(lo)) lo = NOW - 10;
+  lo = Math.floor(lo / 10) * 10;
+  const hi = NOW + 1;
+  const span = hi - lo;
+  const pct = (y) => ((y - lo) / span) * 100;
+  const decs = [];
+  for (let y = lo; y <= NOW; y += 10) decs.push(y);
+  const decW = (10 / span) * 100;
+
+  const nameA = esc(clubById.get(a)?.name || "A"), nameB = esc(clubById.get(b)?.name || "B");
+  let html = `<div class="axis"><span class="lbl">Oyuncu</span><div class="ticks">${decs.map(y => `<span style="left:${pct(y)}%">${y}</span>`).join("")}</div></div>`;
+  for (const p of list) {
+    const meta = [p.born && `d. ${p.born}`, posTr(p.pos), p.nat].filter(Boolean).join(" · ");
+    const src = [...p.src].map(s => `<span class="src" title="${s === "TM" ? "Transfermarkt veri seti" : "Wikidata"}">${s}</span>`).join("");
+    html += `<div class="row">
+      <div class="who">
+        <strong>${esc(p.name)}${src}</strong>
+        ${meta ? `<span class="meta">${esc(meta)}</span>` : ""}
+        <span class="years"><span class="ya" title="${nameA}">${spanText(p.a)}</span><span class="yb" title="${nameB}">${spanText(p.b)}</span></span>
+      </div>
+      <div class="lanes" style="--dec:${decW}%;--off:${pct(lo)}%" aria-hidden="true">${seg(p.a, "a", pct, hi)}${seg(p.b, "b", pct, hi)}</div>
+    </div>`;
+  }
+  box.innerHTML = html;
+}
+
+function seg(s, cls, pct, hi) {
+  if (!s) return "";
+  let f = s.from, t = s.open ? hi : s.to, guess = false;
+  if (f == null && t == null) return "";
+  if (f == null) { f = t; guess = true; }
+  if (t == null) { t = f + 1; guess = true; }
+  t = Math.max(t, f + 1); // tek sezonluk dönem de görünsün
+  return `<span class="seg ${cls}${s.open ? " open" : ""}${guess ? " guess" : ""}" style="left:${pct(f)}%;width:${pct(t) - pct(f)}%"></span>`;
+}
+const POS = { Goalkeeper: "Kaleci", Defender: "Defans", Midfield: "Orta saha", Attack: "Forvet" };
+const posTr = (p) => POS[p] || null;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- Kulüp seçici ---------- */
+function setClub(side, id, go = true) {
+  const c = clubById.get(String(id));
+  if (!c) return;
+  state[side] = c.id;
+  $(side === "a" ? "clubA" : "clubB").value = c.name;
+  if (go) run();
+}
+
+function search(q) {
+  const k = norm(q);
+  if (!k) return clubs.slice().sort((x, y) => y.n - x.n).slice(0, 8);
+  const hits = [];
+  for (const c of clubs) {
+    const i = c.key.indexOf(k);
+    if (i === -1) continue;
+    const score = (i === 0 ? 2 : c.key.includes(" " + k) ? 1 : 0) * 100000 + c.n;
+    hits.push([score, c]);
+  }
+  return hits.sort((x, y) => y[0] - x[0]).slice(0, 8).map(h => h[1]);
+}
+
+function picker(side) {
+  const input = $(side === "a" ? "clubA" : "clubB");
+  const box = $(side === "a" ? "listA" : "listB");
+  let items = [], active = 0;
+  const open = () => {
+    items = search(input.value);
+    active = 0;
+    box.innerHTML = items.length
+      ? items.map((c, i) => `<li role="option" id="${side}-o${i}" aria-selected="${i === 0}" data-i="${i}"><span>${esc(c.name)}</span><small>${c.n} oyuncu</small></li>`).join("")
+      : `<li aria-disabled="true"><span>Bulunamadı</span></li>`;
+    box.hidden = false; input.setAttribute("aria-expanded", "true");
+  };
+  const close = () => { box.hidden = true; input.setAttribute("aria-expanded", "false"); };
+  const mark = () => box.querySelectorAll("li[role=option]").forEach((li, i) => li.setAttribute("aria-selected", i === active));
+  const choose = (i) => { const c = items[i]; if (!c) return; close(); input.blur(); setClub(side, c.id); };
+
+  input.addEventListener("focus", () => { input.select(); open(); });
+  input.addEventListener("input", open);
+  input.addEventListener("keydown", (e) => {
+    if (box.hidden) return;
+    if (e.key === "ArrowDown") { active = Math.min(active + 1, items.length - 1); mark(); e.preventDefault(); }
+    else if (e.key === "ArrowUp") { active = Math.max(active - 1, 0); mark(); e.preventDefault(); }
+    else if (e.key === "Enter") { choose(active); e.preventDefault(); }
+    else if (e.key === "Escape") { close(); input.value = clubById.get(state[side])?.name || ""; }
+  });
+  box.addEventListener("mousedown", (e) => { const li = e.target.closest("li[data-i]"); if (li) { e.preventDefault(); choose(+li.dataset.i); } });
+  input.addEventListener("blur", () => setTimeout(() => { close(); input.value = clubById.get(state[side])?.name || ""; }, 120));
+}
+
+picker("a"); picker("b");
+$("swap").addEventListener("click", () => { [state.a, state.b] = [state.b, state.a]; $("clubA").value = clubById.get(state.a)?.name || ""; $("clubB").value = clubById.get(state.b)?.name || ""; run(); });
+$("filter").addEventListener("input", render);
+$("sort").addEventListener("change", render);
+window.addEventListener("hashchange", () => { const [a, b] = parseHash(); if (a && b && (a !== state.a || b !== state.b)) { setClub("a", a, false); setClub("b", b, false); run(); } });
+
+load().catch(() => { $("dataNote").textContent = "Veri dosyası yüklenemedi."; $("rows").innerHTML = `<div class="empty">Veri yüklenemedi. Sayfayı yenile.</div>`; });
+</script>
+</body>
+</html>
